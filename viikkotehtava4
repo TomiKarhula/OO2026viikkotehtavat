@@ -1,0 +1,209 @@
+#include <iostream>
+#include <iomanip>  
+#include <string>
+
+using namespace std;
+
+class Pankkitili {
+protected:
+    double saldo = 0.0;
+
+public:
+    Pankkitili() = default;
+    virtual ~Pankkitili() = default;
+
+    virtual bool deposit(double summa) {
+        if (summa <= 0.0) {
+            cout << "Talletus epaonnistui: summa ei voi olla negatiivinen tai nolla." << endl;
+            return false;
+        }
+        saldo += summa;
+        cout << "Talletus " << fixed << setprecision(2) << summa 
+             << " onnistui. Uusi saldo: " << saldo << endl;
+        return true;
+    }
+
+    virtual bool withdraw(double summa) {
+        if (summa <= 0.0) {
+            cout << "Nosto epaonnistui: summa ei voi olla negatiivinen tai nolla." << endl;
+            return false;
+        }
+        if (summa > saldo) {
+            cout << "Nosto epaonnistui: tilillä ei ole katetta (" 
+                 << saldo << " < " << summa << ")." << endl;
+            return false;
+        }
+        saldo -= summa;
+        cout << "Nosto " << fixed << setprecision(2) << summa 
+             << " onnistui. Uusi saldo: " << saldo << endl;
+        return true;
+    }
+
+    double getBalance() const {
+        return saldo;
+    }
+
+    virtual void printInfo() const {
+        cout << "Pankkitili   saldo: " << fixed << setprecision(2) << saldo << " €" << endl;
+    }
+};
+
+
+class Luottotili : public Pankkitili {
+private:
+    double luottoraja;
+
+public:
+    Luottotili(double luottoraja) : luottoraja(luottoraja) {
+        saldo = 0.0;  
+    }
+
+    bool deposit(double summa) override {
+        if (summa <= 0.0) {
+            cout << "Luoton maksu epaonnistui: summa ei voi olla negatiivinen tai nolla." << endl;
+            return false;
+        }
+
+        double velka = -saldo;
+        if (summa > velka) {
+            summa = velka;  
+        }
+
+        saldo += summa;
+        cout << "Luoton maksu " << fixed << setprecision(2) << summa 
+             << " onnistui. Uusi saldo: " << saldo << endl;
+        return true;
+    }
+
+    bool withdraw(double summa) override {
+        if (summa <= 0.0) {
+            cout << "Luoton nosto epaonnistui: summa ei voi olla negatiivinen tai nolla." << endl;
+            return false;
+        }
+
+        double uusi_saldo = saldo - summa;
+        if (uusi_saldo < -luottoraja) {
+            cout << "Luoton nosto epaonnistui: luottoraja ylittyy (" 
+                 << -luottoraja << " < " << uusi_saldo << ")." << endl;
+            return false;
+        }
+
+        saldo = uusi_saldo;
+        cout << "Luoton nosto " << fixed << setprecision(2) << summa 
+             << " onnistui. Uusi saldo: " << saldo << endl;
+        return true;
+    }
+
+    void printInfo() const override {
+        cout << "Luottotili   saldo: " << fixed << setprecision(2) << saldo 
+             << " €  (luottoraja " << luottoraja << " €)" << endl;
+    }
+};
+
+
+class Asiakas {
+private:
+    string nimi;
+    Pankkitili pankkitili;
+    Luottotili luottotili;
+
+public:
+    Asiakas(string nimi, double luottoraja) 
+        : nimi(nimi), pankkitili(), luottotili(luottoraja) {
+        cout << "Asiakas luotu: " << nimi << endl;
+    }
+
+    void showSaldo() const {
+        cout << "\nAsiakkaan " << nimi << " tilit:" << endl;
+        pankkitili.printInfo();
+        luottotili.printInfo();
+        cout << endl;
+    }
+
+    bool talletus(double summa) {
+        return pankkitili.deposit(summa);
+    }
+
+    bool nosto(double summa) {
+        return pankkitili.withdraw(summa);
+    }
+
+    bool luotonMaksu(double summa) {
+        return luottotili.deposit(summa);
+    }
+
+    bool luotonNosto(double summa) {
+        return luottotili.withdraw(summa);
+    }
+
+    bool tiliSiirto(double summa, Asiakas& vastaanottaja) {
+        if (summa <= 0.0) {
+            cout << "Siirto epaonnistui: summa ei voi olla negatiivinen tai nolla." << endl;
+            return false;
+        }
+
+        cout << "Yritetään siirtaa " << fixed << setprecision(2) << summa 
+             << " € asiakkaalta " << nimi << " → " << vastaanottaja.nimi << endl;
+
+        if (!pankkitili.withdraw(summa)) {
+            cout << "Siirto epaonnistui: nosto omalta pankkitililtä epaonnistui." << endl;
+            return false;
+        }
+
+        if (!vastaanottaja.pankkitili.deposit(summa)) {
+            // Harvinainen tapaus – palautetaan rahat takaisin jos talletus epäonnistuu
+            pankkitili.deposit(summa);
+            cout << "Siirto epaonnistui: talletus vastaanottajalle epaonnistui." << endl;
+            return false;
+        }
+
+        cout << "Siirto onnistui!" << endl;
+        return true;
+    }
+};
+
+
+int main() {
+    cout << fixed << setprecision(2);
+
+    cout << "=== Testaus ===\n\n";
+
+    Asiakas aku("Aku Ankka", 1500.0);
+    Asiakas iines("Iines Ankka", 3000.0);
+
+    cout << "\nAlkutilanne:\n";
+    aku.showSaldo();
+    iines.showSaldo();
+
+    cout << "\n--- Aku tallettaa pankkitilille ---\n";
+    aku.talletus(800.50);
+    aku.showSaldo();
+
+    cout << "\n--- Aku nostaa pankkitililtä ---\n";
+    aku.nosto(300.00);
+    aku.nosto(600.00);
+    aku.showSaldo();
+
+    cout << "\n--- Aku nostaa luottotililtä ---\n";
+    aku.luotonNosto(950.75);
+    aku.luotonNosto(700.00);   
+    aku.showSaldo();
+
+    cout << "\n--- Aku maksaa luottoa ---\n";
+    aku.luotonMaksu(400.00);
+    aku.showSaldo();
+
+    cout << "\n--- Tilisiirto: Aku → Iines (pankkitililtä) ---\n";
+    aku.tiliSiirto(250.00, iines);
+    aku.showSaldo();
+    iines.showSaldo();
+
+    cout << "\n--- Epäonnistuva siirto (ei katetta) ---\n";
+    aku.tiliSiirto(400.00, iines);
+    aku.showSaldo();
+    iines.showSaldo();
+
+    cout << "\n=== Lopetus ===\n";
+
+    return 0;
+}
