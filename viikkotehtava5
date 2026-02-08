@@ -1,0 +1,136 @@
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+class Seuraaja {
+private:
+    string nimi;
+    Seuraaja* next = nullptr;
+
+public:
+    Seuraaja(string n) : nimi(n) {}
+
+    string getNimi() const {
+        return nimi;
+    }
+
+    void paivitys(string viesti) const {
+        cout << "=> [" << nimi << "] " << viesti << endl;
+    }
+
+    Seuraaja* getNext() const {
+        return next;
+    }
+
+    void setNext(Seuraaja* seuraava) {
+        next = seuraava;
+    }
+};
+
+
+class Notifikaattori {
+private:
+    Seuraaja* seuraajat = nullptr;  
+
+public:
+    ~Notifikaattori() {
+        Seuraaja* current = seuraajat;
+        while (current != nullptr) {
+            Seuraaja* seuraava = current->getNext();
+            delete current;
+            current = seuraava;
+        }
+    }
+
+    void lisaa(Seuraaja* uusiSeuraaja) {
+        uusiSeuraaja->setNext(seuraajat);
+        seuraajat = uusiSeuraaja;
+        cout << "Seuraaja lisätty: " << uusiSeuraaja->getNimi() << endl;
+    }
+
+    void poista(Seuraaja* poistettava) {
+        if (seuraajat == nullptr) {
+            return;
+        }
+
+        if (seuraajat == poistettava) {
+            seuraajat = poistettava->getNext();
+            cout << "Seuraaja poistettu: " << poistettava->getNimi() << endl;
+            delete poistettava;
+            return;
+        }
+
+        Seuraaja* current = seuraajat;
+        while (current != nullptr && current->getNext() != poistettava) {
+            current = current->getNext();
+        }
+
+        if (current != nullptr) {
+            Seuraaja* seuraava = poistettava->getNext();
+            current->setNext(seuraava);
+            cout << "Seuraaja poistettu: " << poistettava->getNimi() << endl;
+            delete poistettava;
+        }
+    }
+
+    void tulosta() const {
+        cout << "Notifikaattorin seuraajat:" << endl;
+        Seuraaja* current = seuraajat;
+        int i = 1;
+        while (current != nullptr) {
+            cout << i++ << ") " << current->getNimi() << endl;
+            current = current->getNext();
+        }
+        if (i == 1) {
+            cout << "(ei seuraajia)" << endl;
+        }
+        cout << endl;
+    }
+
+    void postita(string viesti) const {
+        cout << "\n=== Uusi ilmoitus: " << viesti << " ===\n";
+        Seuraaja* current = seuraajat;
+        while (current != nullptr) {
+            current->paivitys(viesti);
+            current = current->getNext();
+        }
+        cout << "===================\n" << endl;
+    }
+};
+
+
+int main()
+{
+    Notifikaattori some;
+
+    Seuraaja* s1 = new Seuraaja("Matti");
+    Seuraaja* s2 = new Seuraaja("Teppo");
+    Seuraaja* s3 = new Seuraaja("Liisa");
+    Seuraaja* s4 = new Seuraaja("Kalle");
+
+    cout << "Alussa:\n";
+    some.tulosta();
+
+    some.lisaa(s1);
+    some.lisaa(s2);
+    some.lisaa(s3);
+    some.tulosta();
+
+    some.postita("Tervetuloa palveluun!");
+
+    some.lisaa(s4);
+    some.tulosta();
+
+    some.postita("Uusi ominaisuus julkaistu!");
+
+    cout << "Poistetaan Teppo ja Liisa...\n";
+    some.poista(s2);  
+    some.poista(s3); 
+    some.tulosta();
+
+    some.postita("Viimeinen viesti ennen loppua");
+
+
+    return 0;
+}
